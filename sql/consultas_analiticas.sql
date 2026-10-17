@@ -2,6 +2,7 @@
 -- Consultas analíticas: respondem às perguntas de negócio no DW.
 -- Lembrete: "valor" é semiaditivo -> sempre filtrar UM exercício
 -- antes de somar (aqui, o mais recente: dim_tempo.fl_ultimo_ano).
+-- Séries históricas excluem fl_valor_atipico (pico isolado de digitação).
 -- =====================================================================
 
 -- P1. Quanto vale o patrimônio hoje e com quem ele está? (por órgão)
@@ -77,6 +78,7 @@ SELECT t.ano, count(*) AS qtd_imoveis, round(sum(f.valor) / 1e9, 2) AS valor_bil
 FROM dw.fato_patrimonio_anual f
 JOIN dw.dim_tempo t USING (sk_tempo)
 WHERE NOT t.fl_moeda_pre_real
+  AND NOT f.fl_valor_atipico          -- exclui o pico de 2023 (imóvel 8368, R$ 6,865 bi)
 GROUP BY t.ano ORDER BY t.ano;
 
 -- P6. Valor por m² por município (áreas válidas, mínimo de 5 imóveis)

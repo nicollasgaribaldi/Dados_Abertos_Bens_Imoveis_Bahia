@@ -87,6 +87,9 @@ SELECT * FROM dw.fato_patrimonio_anual WHERE fl_area_invalida;
 SELECT sk_imovel FROM dw.fato_patrimonio_anual
 GROUP BY sk_imovel HAVING count(DISTINCT sk_orgao) > 1;
 
+-- alerta: valor_atipico_pico_isolado
+SELECT * FROM dw.fato_patrimonio_anual WHERE fl_valor_atipico;
+
 -- alerta: valores_em_moeda_pre_real
 SELECT f.* FROM dw.fato_patrimonio_anual f JOIN dw.dim_tempo t USING (sk_tempo)
 WHERE t.fl_moeda_pre_real;

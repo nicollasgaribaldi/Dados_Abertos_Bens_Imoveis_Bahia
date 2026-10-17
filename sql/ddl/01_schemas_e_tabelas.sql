@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS dw.fato_patrimonio_anual (
     area_m2            NUMERIC(16,2),
     fl_valor_invalido  BOOLEAN        NOT NULL,   -- valor <= 0
     fl_area_invalida   BOOLEAN        NOT NULL,   -- área nula ou <= 0
+    fl_valor_atipico   BOOLEAN        NOT NULL,   -- pico isolado: >= 100x o exercício seguinte (provável erro de digitação)
     CONSTRAINT pk_fato_patrimonio_anual PRIMARY KEY (sk_imovel, sk_tempo)
 );
 

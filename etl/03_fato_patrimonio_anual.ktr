@@ -25,9 +25,17 @@
 <order><hop><from>Staging</from><to>Lookup dim_imovel</to><enabled>Y</enabled></hop><hop><from>dim_imovel</from><to>Lookup dim_imovel</to><enabled>Y</enabled></hop><hop><from>Lookup dim_imovel</from><to>Lookup dim_tempo</to><enabled>Y</enabled></hop><hop><from>dim_tempo</from><to>Lookup dim_tempo</to><enabled>Y</enabled></hop><hop><from>Lookup dim_tempo</from><to>Lookup dim_municipio</to><enabled>Y</enabled></hop><hop><from>dim_municipio</from><to>Lookup dim_municipio</to><enabled>Y</enabled></hop><hop><from>Lookup dim_municipio</from><to>Lookup dim_orgao</to><enabled>Y</enabled></hop><hop><from>dim_orgao</from><to>Lookup dim_orgao</to><enabled>Y</enabled></hop><hop><from>Lookup dim_orgao</from><to>Lookup dim_destino</to><enabled>Y</enabled></hop><hop><from>dim_destino</from><to>Lookup dim_destino</to><enabled>Y</enabled></hop><hop><from>Lookup dim_destino</from><to>Flags de qualidade</to><enabled>Y</enabled></hop><hop><from>Flags de qualidade</from><to>Colunas da fato</to><enabled>Y</enabled></hop><hop><from>Colunas da fato</from><to>dw.fato_patrimonio_anual</to><enabled>Y</enabled></hop></order>
 <step><name>Staging</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
 <partitioning><method>none</method><schema_name/></partitioning>
-<connection>dw_bens_imoveis</connection><sql>SELECT numero_patrimonio, exercicio, municipio, orgao_gestor, destino
+<connection>dw_bens_imoveis</connection><sql>-- fl_valor_atipico: pico isolado (&gt;= 100x o exercício seguinte e o anterior, quando existe),
+-- fora do período pré-Real. Ex.: imóvel 8368 com R$ 6,865 bi em 2023 e R$ 6,865 mi em 2024.
+SELECT numero_patrimonio, exercicio, municipio, orgao_gestor, destino
      , valor, dimensoes AS area_m2
-FROM stg.bens_imoveis</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+     , coalesce(exercicio &gt;= 1994 AND prox &gt; 0 AND valor &gt;= 100 * prox
+                AND (ant IS NULL OR valor &gt;= 100 * ant), false) AS fl_valor_atipico
+FROM (SELECT s.*
+           , lag(valor)  OVER w AS ant
+           , lead(valor) OVER w AS prox
+      FROM stg.bens_imoveis s
+      WINDOW w AS (PARTITION BY numero_patrimonio ORDER BY exercicio)) t</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
 <attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
 <GUI><xloc>64</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dim_imovel</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
 <partitioning><method>none</method><schema_name/></partitioning>
@@ -85,7 +93,7 @@ FROM stg.bens_imoveis</sql><limit>0</limit><lookup/><execute_each_row>N</execute
 <attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
 <GUI><xloc>1024</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>Colunas da fato</name><type>SelectValues</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
 <partitioning><method>none</method><schema_name/></partitioning>
-<fields><field><name>sk_imovel</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_tempo</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_municipio</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_orgao</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_destino</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>valor</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>area_m2</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>fl_valor_invalido</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>fl_area_invalida</name><rename></rename><length>-2</length><precision>-2</precision></field><select_unspecified>N</select_unspecified></fields>
+<fields><field><name>sk_imovel</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_tempo</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_municipio</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_orgao</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_destino</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>valor</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>area_m2</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>fl_valor_invalido</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>fl_area_invalida</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>fl_valor_atipico</name><rename></rename><length>-2</length><precision>-2</precision></field><select_unspecified>N</select_unspecified></fields>
 <attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
 <GUI><xloc>1184</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dw.fato_patrimonio_anual</name><type>TableOutput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
 <partitioning><method>none</method><schema_name/></partitioning>
