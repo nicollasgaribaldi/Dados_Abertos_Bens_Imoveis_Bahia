@@ -1,0 +1,12 @@
+Organização: 
+BA - Estado da Bahia
+
+Descrição:
+Detalhamento dos bens imóveis, identificação e caracterização de cada propriedade, que compõem o patrimônio público pertencente ao Estado da Bahia (administração direta).
+Fonte: Sistema de Gestão do Patrimônio Imobiliário (SIMOV), sob a gestão da Secretaria da Administração (SAEB),
+Atualização: mensal.
+
+Link: 
+https://dados.gov.br/dados/conjuntos-dados/bens-imoveis2
+https://dados.ba.gov.br/dataset/bed6ce4b-b6af-4f9e-a4cc-2cc35d30cdaf/resource/1a4b150d-232e-42cb-93b7-23b9c931fc4a/download/imoveisproprios.json
+https://dados.ba.gov.br/dataset/bens-imoveis/resource/1a4b150d-232e-42cb-93b7-23b9c931fc4a?inner_span=True
