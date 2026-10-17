@@ -52,7 +52,8 @@ CREATE TABLE IF NOT EXISTS dw.dim_municipio (
     uf                 CHAR(2)        NOT NULL DEFAULT 'BA',
     localizacao_mapa   VARCHAR(120)   NOT NULL,   -- "MUNICÍPIO, Bahia, Brasil" para o mapa do Power BI
     fl_capital         BOOLEAN        NOT NULL,
-    fl_regiao_metropolitana BOOLEAN   NOT NULL    -- Região Metropolitana de Salvador (RMS)
+    fl_regiao_metropolitana BOOLEAN   NOT NULL,   -- Região Metropolitana de Salvador (RMS)
+    regiao             VARCHAR(30)    NOT NULL    -- Salvador / RMS (sem Salvador) / Interior
 );
 
 CREATE TABLE IF NOT EXISTS dw.dim_orgao (
