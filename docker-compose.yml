@@ -1,0 +1,25 @@
+# PostgreSQL 16 do projeto (staging + Data Warehouse).
+# Uso:  cp .env.example .env  &&  docker compose up -d
+services:
+  postgres:
+    image: postgres:16
+    container_name: pg-bens-imoveis-ba
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:-dw_bens_imoveis}
+    ports:
+      - "${POSTGRES_PORT:-5437}:5432"
+    volumes:
+      - pg_bens_imoveis_data:/var/lib/postgresql/data
+      # Na primeira subida, cria os schemas e tabelas automaticamente
+      - ./sql/ddl:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -q -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: "no"
+
+volumes:
+  pg_bens_imoveis_data:

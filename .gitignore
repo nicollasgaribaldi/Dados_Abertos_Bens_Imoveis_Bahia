@@ -1,0 +1,47 @@
+# --- Segredos e credenciais (nunca versionar) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credenciais*.json
+*service-account*.json
+*-key.json
+secrets/
+
+# --- Dados intermediários (gerados pelo pipeline) ---
+data/processed/
+data/tmp/
+*.csv.gz
+*.parquet
+
+# --- Pentaho: logs e arquivos temporários ---
+*.log
+logs/
+.spoonrc
+*.ktr.backup
+*.kjb.backup
+etl/*.bak
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- Power BI: arquivos temporários e cache ---
+*.pbix.tmp
+~$*
+.pbi/
+*.abf
+
+# --- Sistema / editores ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.tmp
+*.swp
