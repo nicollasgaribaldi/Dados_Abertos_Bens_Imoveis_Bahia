@@ -1,0 +1,10 @@
+# Ingestão (reparar_json.py) usa só a biblioteca padrão.
+# Testes, EDA e carga auxiliar:
+pandas>=2.2
+SQLAlchemy>=2.0
+psycopg2-binary>=2.9
+matplotlib>=3.8
+seaborn>=0.13
+jupyter>=1.0
+nbconvert>=7.0
+python-dotenv>=1.0

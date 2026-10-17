@@ -1,0 +1,5 @@
+# Camada raw: nunca converter fim de linha nem encoding
+db_bensimoveis_ba/** -text
+*.pbix binary
+*.png binary
+*.sh text eol=lf
