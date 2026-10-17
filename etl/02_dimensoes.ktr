@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transformation>
+<info><name>02_dimensoes</name><description>Staging -&gt; dimensões do DW</description><extended_description/><trans_version/><trans_type>Normal</trans_type><directory>/</directory>
+<parameters><parameter><name>PG_HOST</name><default_value>localhost</default_value><description>Host do PostgreSQL</description></parameter><parameter><name>PG_PORT</name><default_value>5437</default_value><description>Porta do PostgreSQL</description></parameter><parameter><name>PG_DB</name><default_value>dw_bens_imoveis</default_value><description>Banco</description></parameter><parameter><name>PG_USER</name><default_value>postgres</default_value><description>Usuário</description></parameter><parameter><name>PG_PASSWORD</name><default_value></default_value><description>Senha (vem do .env, nunca gravada no arquivo)</description></parameter></parameters>
+<size_rowset>10000</size_rowset><sleep_time_empty>50</sleep_time_empty><sleep_time_full>50</sleep_time_full>
+<unique_connections>N</unique_connections><feedback_shown>Y</feedback_shown><feedback_size>50000</feedback_size>
+<using_thread_priorities>Y</using_thread_priorities><shared_objects_file/><capture_step_performance>N</capture_step_performance>
+<step_performance_capturing_delay>1000</step_performance_capturing_delay><step_performance_capturing_size_limit>100</step_performance_capturing_size_limit>
+<dependencies></dependencies><partitionschemas></partitionschemas><slaveservers></slaveservers><clusterschemas></clusterschemas>
+<created_user>-</created_user><modified_user>-</modified_user><key_for_session_key/><is_key_private>N</is_key_private></info>
+<notepads><notepad><note>DIMENSÕES: carga full a partir da staging (o job limpa as tabelas antes). Chaves substitutas (sk_*) geradas pelo SERIAL do PostgreSQL. dim_imovel guarda os atributos do exercício mais recente (SCD tipo 1); órgão, destino e município ficam ligados na fato por ano.</note><xloc>640</xloc><yloc>64</yloc><width>360</width><heigth>120</heigth>
+<fontname>Segoe UI</fontname><fontsize>9</fontsize><fontbold>N</fontbold><fontitalic>N</fontitalic>
+<fontcolorred>14</fontcolorred><fontcolorgreen>58</fontcolorgreen><fontcolorblue>90</fontcolorblue>
+<backgroundcolorred>255</backgroundcolorred><backgroundcolorgreen>244</backgroundcolorgreen><backgroundcolorblue>205</backgroundcolorblue>
+<bordercolorred>100</bordercolorred><bordercolorgreen>100</bordercolorgreen><bordercolorblue>100</bordercolorblue>
+<drawshadow>Y</drawshadow></notepad></notepads>
+<connection><name>dw_bens_imoveis</name><server>${PG_HOST}</server><type>POSTGRESQL</type><access>Native</access>
+<database>${PG_DB}</database><port>${PG_PORT}</port><username>${PG_USER}</username><password>${PG_PASSWORD}</password>
+<servername/><data_tablespace/><index_tablespace/><attributes>
+<attribute><code>FORCE_IDENTIFIERS_TO_LOWERCASE</code><attribute>N</attribute></attribute>
+<attribute><code>PORT_NUMBER</code><attribute>${PG_PORT}</attribute></attribute>
+<attribute><code>SUPPORTS_BOOLEAN_DATA_TYPE</code><attribute>Y</attribute></attribute>
+<attribute><code>SUPPORTS_TIMESTAMP_DATA_TYPE</code><attribute>Y</attribute></attribute>
+</attributes></connection>
+<order><hop><from>Tempo (stg)</from><to>dw.dim_tempo</to><enabled>Y</enabled></hop><hop><from>Imóvel (stg)</from><to>dw.dim_imovel</to><enabled>Y</enabled></hop><hop><from>Município (stg)</from><to>dw.dim_municipio</to><enabled>Y</enabled></hop><hop><from>Órgão (stg)</from><to>dw.dim_orgao</to><enabled>Y</enabled></hop><hop><from>Destino (stg)</from><to>Agrupar destino</to><enabled>Y</enabled></hop><hop><from>Agrupar destino</from><to>dw.dim_destino</to><enabled>Y</enabled></hop></order>
+<step><name>Tempo (stg)</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT ano
+     , (ano / 10 * 10)::text || 's'                       AS decada
+     , CASE WHEN ano &lt; 1994 THEN 'Pré-Real' ELSE 'Real' END AS periodo_monetario
+     , ano &lt; 1994                                         AS fl_moeda_pre_real
+     , ano = (SELECT max(exercicio) FROM stg.bens_imoveis) AS fl_ultimo_ano
+FROM (SELECT DISTINCT exercicio AS ano FROM stg.bens_imoveis) t
+ORDER BY ano</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>64</xloc><yloc>64</yloc><draw>Y</draw></GUI></step><step><name>dw.dim_tempo</name><type>TableOutput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><schema>dw</schema><table>dim_tempo</table><commit>5000</commit>
+<truncate>N</truncate><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>N</specify_fields>
+<partitioning_enabled>N</partitioning_enabled><partitioning_field/><partitioning_daily>N</partitioning_daily><partitioning_monthly>Y</partitioning_monthly>
+<tablename_in_field>N</tablename_in_field><tablename_field/><tablename_in_table>Y</tablename_in_table><return_keys>N</return_keys><return_field/><fields></fields>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>480</xloc><yloc>64</yloc><draw>Y</draw></GUI></step><step><name>Imóvel (stg)</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>-- atributos do exercício mais recente de cada imóvel (SCD tipo 1)
+WITH ult AS (SELECT max(exercicio) AS mx FROM stg.bens_imoveis)
+SELECT DISTINCT ON (s.numero_patrimonio)
+       s.numero_patrimonio
+     , s.endereco
+     , s.dimensoes                                            AS area_m2_atual
+     , min(s.exercicio) OVER w                                AS primeiro_exercicio
+     , max(s.exercicio) OVER w                                AS ultimo_exercicio
+     , max(s.exercicio) OVER w = ult.mx                       AS fl_ativo_ultimo_ano
+FROM stg.bens_imoveis s CROSS JOIN ult
+WINDOW w AS (PARTITION BY s.numero_patrimonio)
+ORDER BY s.numero_patrimonio, s.exercicio DESC</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>64</xloc><yloc>160</yloc><draw>Y</draw></GUI></step><step><name>dw.dim_imovel</name><type>TableOutput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><schema>dw</schema><table>dim_imovel</table><commit>5000</commit>
+<truncate>N</truncate><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>N</specify_fields>
+<partitioning_enabled>N</partitioning_enabled><partitioning_field/><partitioning_daily>N</partitioning_daily><partitioning_monthly>Y</partitioning_monthly>
+<tablename_in_field>N</tablename_in_field><tablename_field/><tablename_in_table>Y</tablename_in_table><return_keys>N</return_keys><return_field/><fields></fields>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>480</xloc><yloc>160</yloc><draw>Y</draw></GUI></step><step><name>Município (stg)</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT municipio
+     , 'BA'                                    AS uf
+     , municipio || ', Bahia, Brasil'          AS localizacao_mapa
+     , municipio = 'SALVADOR'                  AS fl_capital
+     , municipio IN ('SALVADOR','CAMAÇARI','CANDEIAS','DIAS D ÁVILA','ITAPARICA','LAURO DE FREITAS',
+                     'MADRE DE DEUS','MATA DE SÃO JOÃO','POJUCA','SÃO FRANCISCO DO CONDE',
+                     'SÃO SEBASTIÃO DO PASSÉ','SIMÕES FILHO','VERA CRUZ') AS fl_regiao_metropolitana
+FROM (SELECT DISTINCT municipio FROM stg.bens_imoveis) t
+ORDER BY municipio</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>64</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dw.dim_municipio</name><type>TableOutput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><schema>dw</schema><table>dim_municipio</table><commit>5000</commit>
+<truncate>N</truncate><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>N</specify_fields>
+<partitioning_enabled>N</partitioning_enabled><partitioning_field/><partitioning_daily>N</partitioning_daily><partitioning_monthly>Y</partitioning_monthly>
+<tablename_in_field>N</tablename_in_field><tablename_field/><tablename_in_table>Y</tablename_in_table><return_keys>N</return_keys><return_field/><fields></fields>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>480</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>Órgão (stg)</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT orgao_gestor
+     , CASE
+         WHEN orgao_gestor LIKE '%EDUCAÇÃO%'                    THEN 'Educação'
+         WHEN orgao_gestor LIKE '%SAÚDE%'                       THEN 'Saúde'
+         WHEN orgao_gestor ~ 'POLÍCIA|SEGURANÇA|BOMBEIROS|CASA MILITAR|PENITENCI' THEN 'Segurança Pública'
+         WHEN orgao_gestor ~ 'AGRICULTURA|RURAL|MEIO AMBIENTE|HÍDRICA'           THEN 'Agricultura e Meio Ambiente'
+         WHEN orgao_gestor ~ 'ASSISTENCIA|SOCIAL|JUSTI|CULTURA|TRABALHO|DESPORTOS' THEN 'Social, Cultura e Esporte'
+         WHEN orgao_gestor ~ 'INFRAESTRUTURA|DESENVOLVIMENTO|CIÊNCIA|TURISMO|DETRAN' THEN 'Infraestrutura e Desenvolvimento'
+         ELSE 'Gestão e Fazenda'   -- Administração, Fazenda, Planejamento, Casa Civil, PGE, SUCAB
+       END AS area_governo
+FROM (SELECT DISTINCT orgao_gestor FROM stg.bens_imoveis) t
+ORDER BY orgao_gestor</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>64</xloc><yloc>352</yloc><draw>Y</draw></GUI></step><step><name>dw.dim_orgao</name><type>TableOutput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><schema>dw</schema><table>dim_orgao</table><commit>5000</commit>
+<truncate>N</truncate><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>N</specify_fields>
+<partitioning_enabled>N</partitioning_enabled><partitioning_field/><partitioning_daily>N</partitioning_daily><partitioning_monthly>Y</partitioning_monthly>
+<tablename_in_field>N</tablename_in_field><tablename_field/><tablename_in_table>Y</tablename_in_table><return_keys>N</return_keys><return_field/><fields></fields>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>480</xloc><yloc>352</yloc><draw>Y</draw></GUI></step><step><name>Destino (stg)</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT DISTINCT destino FROM stg.bens_imoveis ORDER BY destino</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>64</xloc><yloc>448</yloc><draw>Y</draw></GUI></step><step><name>Agrupar destino</name><type>ValueMapper</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<field_to_use>destino</field_to_use><target_field>grupo_destino</target_field><non_match_default>Outros</non_match_default><fields><field><source_value>Não definido</source_value><target_value>Sem destinação</target_value></field><field><source_value>Uso</source_value><target_value>Em uso</target_value></field><field><source_value>Alienação</source_value><target_value>Alienação e outorga</target_value></field><field><source_value>PROJETO DE ALIENAÇÃO</source_value><target_value>Alienação e outorga</target_value></field><field><source_value>ARREMATADO/LEILÃO</source_value><target_value>Alienação e outorga</target_value></field><field><source_value>OUTORGADA À EMPRESA</source_value><target_value>Alienação e outorga</target_value></field></fields>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>272</xloc><yloc>448</yloc><draw>Y</draw></GUI></step><step><name>dw.dim_destino</name><type>TableOutput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><schema>dw</schema><table>dim_destino</table><commit>5000</commit>
+<truncate>N</truncate><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>N</specify_fields>
+<partitioning_enabled>N</partitioning_enabled><partitioning_field/><partitioning_daily>N</partitioning_daily><partitioning_monthly>Y</partitioning_monthly>
+<tablename_in_field>N</tablename_in_field><tablename_field/><tablename_in_table>Y</tablename_in_table><return_keys>N</return_keys><return_field/><fields></fields>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>480</xloc><yloc>448</yloc><draw>Y</draw></GUI></step>
+<step_error_handling></step_error_handling><slave-step-sequence/><attributes/>
+</transformation>

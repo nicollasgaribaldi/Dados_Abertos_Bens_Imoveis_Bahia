@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transformation>
+<info><name>03_fato_patrimonio_anual</name><description>Staging + dimensões -&gt; fato</description><extended_description/><trans_version/><trans_type>Normal</trans_type><directory>/</directory>
+<parameters><parameter><name>PG_HOST</name><default_value>localhost</default_value><description>Host do PostgreSQL</description></parameter><parameter><name>PG_PORT</name><default_value>5437</default_value><description>Porta do PostgreSQL</description></parameter><parameter><name>PG_DB</name><default_value>dw_bens_imoveis</default_value><description>Banco</description></parameter><parameter><name>PG_USER</name><default_value>postgres</default_value><description>Usuário</description></parameter><parameter><name>PG_PASSWORD</name><default_value></default_value><description>Senha (vem do .env, nunca gravada no arquivo)</description></parameter></parameters>
+<size_rowset>10000</size_rowset><sleep_time_empty>50</sleep_time_empty><sleep_time_full>50</sleep_time_full>
+<unique_connections>N</unique_connections><feedback_shown>Y</feedback_shown><feedback_size>50000</feedback_size>
+<using_thread_priorities>Y</using_thread_priorities><shared_objects_file/><capture_step_performance>N</capture_step_performance>
+<step_performance_capturing_delay>1000</step_performance_capturing_delay><step_performance_capturing_size_limit>100</step_performance_capturing_size_limit>
+<dependencies></dependencies><partitionschemas></partitionschemas><slaveservers></slaveservers><clusterschemas></clusterschemas>
+<created_user>-</created_user><modified_user>-</modified_user><key_for_session_key/><is_key_private>N</is_key_private></info>
+<notepads><notepad><note>FATO (snapshot periódico anual). Grão: 1 imóvel x 1 exercício. Cada Stream lookup troca a chave natural pela chave substituta da dimensão. 'valor' é semiaditivo: soma entre imóveis no mesmo ano, nunca entre anos.</note><xloc>64</xloc><yloc>400</yloc><width>640</width><heigth>60</heigth>
+<fontname>Segoe UI</fontname><fontsize>9</fontsize><fontbold>N</fontbold><fontitalic>N</fontitalic>
+<fontcolorred>14</fontcolorred><fontcolorgreen>58</fontcolorgreen><fontcolorblue>90</fontcolorblue>
+<backgroundcolorred>255</backgroundcolorred><backgroundcolorgreen>244</backgroundcolorgreen><backgroundcolorblue>205</backgroundcolorblue>
+<bordercolorred>100</bordercolorred><bordercolorgreen>100</bordercolorgreen><bordercolorblue>100</bordercolorblue>
+<drawshadow>Y</drawshadow></notepad></notepads>
+<connection><name>dw_bens_imoveis</name><server>${PG_HOST}</server><type>POSTGRESQL</type><access>Native</access>
+<database>${PG_DB}</database><port>${PG_PORT}</port><username>${PG_USER}</username><password>${PG_PASSWORD}</password>
+<servername/><data_tablespace/><index_tablespace/><attributes>
+<attribute><code>FORCE_IDENTIFIERS_TO_LOWERCASE</code><attribute>N</attribute></attribute>
+<attribute><code>PORT_NUMBER</code><attribute>${PG_PORT}</attribute></attribute>
+<attribute><code>SUPPORTS_BOOLEAN_DATA_TYPE</code><attribute>Y</attribute></attribute>
+<attribute><code>SUPPORTS_TIMESTAMP_DATA_TYPE</code><attribute>Y</attribute></attribute>
+</attributes></connection>
+<order><hop><from>Staging</from><to>Lookup dim_imovel</to><enabled>Y</enabled></hop><hop><from>dim_imovel</from><to>Lookup dim_imovel</to><enabled>Y</enabled></hop><hop><from>Lookup dim_imovel</from><to>Lookup dim_tempo</to><enabled>Y</enabled></hop><hop><from>dim_tempo</from><to>Lookup dim_tempo</to><enabled>Y</enabled></hop><hop><from>Lookup dim_tempo</from><to>Lookup dim_municipio</to><enabled>Y</enabled></hop><hop><from>dim_municipio</from><to>Lookup dim_municipio</to><enabled>Y</enabled></hop><hop><from>Lookup dim_municipio</from><to>Lookup dim_orgao</to><enabled>Y</enabled></hop><hop><from>dim_orgao</from><to>Lookup dim_orgao</to><enabled>Y</enabled></hop><hop><from>Lookup dim_orgao</from><to>Lookup dim_destino</to><enabled>Y</enabled></hop><hop><from>dim_destino</from><to>Lookup dim_destino</to><enabled>Y</enabled></hop><hop><from>Lookup dim_destino</from><to>Flags de qualidade</to><enabled>Y</enabled></hop><hop><from>Flags de qualidade</from><to>Colunas da fato</to><enabled>Y</enabled></hop><hop><from>Colunas da fato</from><to>dw.fato_patrimonio_anual</to><enabled>Y</enabled></hop></order>
+<step><name>Staging</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT numero_patrimonio, exercicio, municipio, orgao_gestor, destino
+     , valor, dimensoes AS area_m2
+FROM stg.bens_imoveis</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>64</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dim_imovel</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT numero_patrimonio, sk_imovel FROM dw.dim_imovel</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>224</xloc><yloc>96</yloc><draw>Y</draw></GUI></step><step><name>Lookup dim_imovel</name><type>StreamLookup</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<from>dim_imovel</from><input_sorted>N</input_sorted><preserve_memory>Y</preserve_memory><sorted_list>N</sorted_list><integer_pair>N</integer_pair>
+<lookup><key><name>numero_patrimonio</name><field>numero_patrimonio</field></key>
+<value><name>sk_imovel</name><rename>sk_imovel</rename><default/><type>Integer</type></value></lookup>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>224</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dim_tempo</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT ano, sk_tempo FROM dw.dim_tempo</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>384</xloc><yloc>96</yloc><draw>Y</draw></GUI></step><step><name>Lookup dim_tempo</name><type>StreamLookup</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<from>dim_tempo</from><input_sorted>N</input_sorted><preserve_memory>Y</preserve_memory><sorted_list>N</sorted_list><integer_pair>N</integer_pair>
+<lookup><key><name>exercicio</name><field>ano</field></key>
+<value><name>sk_tempo</name><rename>sk_tempo</rename><default/><type>Integer</type></value></lookup>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>384</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dim_municipio</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT municipio, sk_municipio FROM dw.dim_municipio</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>544</xloc><yloc>96</yloc><draw>Y</draw></GUI></step><step><name>Lookup dim_municipio</name><type>StreamLookup</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<from>dim_municipio</from><input_sorted>N</input_sorted><preserve_memory>Y</preserve_memory><sorted_list>N</sorted_list><integer_pair>N</integer_pair>
+<lookup><key><name>municipio</name><field>municipio</field></key>
+<value><name>sk_municipio</name><rename>sk_municipio</rename><default/><type>Integer</type></value></lookup>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>544</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dim_orgao</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT orgao_gestor, sk_orgao FROM dw.dim_orgao</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>704</xloc><yloc>96</yloc><draw>Y</draw></GUI></step><step><name>Lookup dim_orgao</name><type>StreamLookup</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<from>dim_orgao</from><input_sorted>N</input_sorted><preserve_memory>Y</preserve_memory><sorted_list>N</sorted_list><integer_pair>N</integer_pair>
+<lookup><key><name>orgao_gestor</name><field>orgao_gestor</field></key>
+<value><name>sk_orgao</name><rename>sk_orgao</rename><default/><type>Integer</type></value></lookup>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>704</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dim_destino</name><type>TableInput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><sql>SELECT destino, sk_destino FROM dw.dim_destino</sql><limit>0</limit><lookup/><execute_each_row>N</execute_each_row><variables_active>N</variables_active><lazy_conversion_active>N</lazy_conversion_active>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>864</xloc><yloc>96</yloc><draw>Y</draw></GUI></step><step><name>Lookup dim_destino</name><type>StreamLookup</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<from>dim_destino</from><input_sorted>N</input_sorted><preserve_memory>Y</preserve_memory><sorted_list>N</sorted_list><integer_pair>N</integer_pair>
+<lookup><key><name>destino</name><field>destino</field></key>
+<value><name>sk_destino</name><rename>sk_destino</rename><default/><type>Integer</type></value></lookup>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>864</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>Flags de qualidade</name><type>Formula</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<formula><field_name>fl_valor_invalido</field_name><formula_string>IF(ISBLANK([valor]);TRUE();[valor]&lt;=0)</formula_string><value_type>Boolean</value_type><value_length>-1</value_length><value_precision>-1</value_precision><replace_field/></formula><formula><field_name>fl_area_invalida</field_name><formula_string>IF(ISBLANK([area_m2]);TRUE();[area_m2]&lt;=0)</formula_string><value_type>Boolean</value_type><value_length>-1</value_length><value_precision>-1</value_precision><replace_field/></formula>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>1024</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>Colunas da fato</name><type>SelectValues</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<fields><field><name>sk_imovel</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_tempo</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_municipio</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_orgao</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>sk_destino</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>valor</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>area_m2</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>fl_valor_invalido</name><rename></rename><length>-2</length><precision>-2</precision></field><field><name>fl_area_invalida</name><rename></rename><length>-2</length><precision>-2</precision></field><select_unspecified>N</select_unspecified></fields>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>1184</xloc><yloc>256</yloc><draw>Y</draw></GUI></step><step><name>dw.fato_patrimonio_anual</name><type>TableOutput</type><description/><distribute>Y</distribute><custom_distribution/><copies>1</copies>
+<partitioning><method>none</method><schema_name/></partitioning>
+<connection>dw_bens_imoveis</connection><schema>dw</schema><table>fato_patrimonio_anual</table><commit>10000</commit>
+<truncate>N</truncate><ignore_errors>N</ignore_errors><use_batch>Y</use_batch><specify_fields>N</specify_fields>
+<partitioning_enabled>N</partitioning_enabled><partitioning_field/><partitioning_daily>N</partitioning_daily><partitioning_monthly>Y</partitioning_monthly>
+<tablename_in_field>N</tablename_in_field><tablename_field/><tablename_in_table>Y</tablename_in_table><return_keys>N</return_keys><return_field/><fields></fields>
+<attributes/><cluster_schema/><remotesteps><input></input><output></output></remotesteps>
+<GUI><xloc>1344</xloc><yloc>256</yloc><draw>Y</draw></GUI></step>
+<step_error_handling></step_error_handling><slave-step-sequence/><attributes/>
+</transformation>

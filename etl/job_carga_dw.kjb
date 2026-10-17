@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<job><name>job_carga_dw</name><description>Pipeline completo: landing -> staging -> dimensões -> fato</description>
+<extended_description/><job_version/><directory>/</directory><created_user>-</created_user><modified_user>-</modified_user>
+<parameters><parameter><name>PG_HOST</name><default_value>localhost</default_value><description>Host do PostgreSQL</description></parameter><parameter><name>PG_PORT</name><default_value>5437</default_value><description>Porta do PostgreSQL</description></parameter><parameter><name>PG_DB</name><default_value>dw_bens_imoveis</default_value><description>Banco</description></parameter><parameter><name>PG_USER</name><default_value>postgres</default_value><description>Usuário</description></parameter><parameter><name>PG_PASSWORD</name><default_value></default_value><description>Senha (vem do .env, nunca gravada no arquivo)</description></parameter></parameters>
+<connection><name>dw_bens_imoveis</name><server>${PG_HOST}</server><type>POSTGRESQL</type><access>Native</access>
+<database>${PG_DB}</database><port>${PG_PORT}</port><username>${PG_USER}</username><password>${PG_PASSWORD}</password>
+<servername/><data_tablespace/><index_tablespace/><attributes>
+<attribute><code>FORCE_IDENTIFIERS_TO_LOWERCASE</code><attribute>N</attribute></attribute>
+<attribute><code>PORT_NUMBER</code><attribute>${PG_PORT}</attribute></attribute>
+<attribute><code>SUPPORTS_BOOLEAN_DATA_TYPE</code><attribute>Y</attribute></attribute>
+<attribute><code>SUPPORTS_TIMESTAMP_DATA_TYPE</code><attribute>Y</attribute></attribute>
+</attributes></connection>
+<slaveservers></slaveservers><job-log-table><connection/><schema/><table/><size_limit_lines/><interval/><timeout_days/></job-log-table>
+<pass_batchid>N</pass_batchid><shared_objects_file/>
+<entries><entry><name>Start</name><description/><type>SPECIAL</type><attributes/><start>Y</start><dummy>N</dummy><repeat>N</repeat><schedulerType>0</schedulerType><intervalSeconds>0</intervalSeconds>
+<intervalMinutes>60</intervalMinutes><hour>12</hour><minutes>0</minutes><weekDay>1</weekDay><DayOfMonth>1</DayOfMonth>
+<parallel>N</parallel><draw>Y</draw><nr>0</nr><xloc>64</xloc><yloc>128</yloc><attributes_kjc/></entry><entry><name>Limpar tabelas (carga full)</name><description/><type>SQL</type><attributes/><sql>TRUNCATE TABLE stg.bens_imoveis;
+TRUNCATE TABLE dw.fato_patrimonio_anual, dw.dim_imovel, dw.dim_tempo,
+               dw.dim_municipio, dw.dim_orgao, dw.dim_destino RESTART IDENTITY;</sql><useVariableSubstitution>F</useVariableSubstitution><sqlfromfile>F</sqlfromfile><sqlfilename/><sendOneStatement>F</sendOneStatement><connection>dw_bens_imoveis</connection>
+<parallel>N</parallel><draw>Y</draw><nr>0</nr><xloc>224</xloc><yloc>128</yloc><attributes_kjc/></entry><entry><name>01 Staging</name><description/><type>TRANS</type><attributes/><specification_method>filename</specification_method><trans_object_id/>
+<filename>${Internal.Entry.Current.Directory}/01_stg_bens_imoveis.ktr</filename><transname/>
+<arg_from_previous>N</arg_from_previous><params_from_previous>N</params_from_previous><exec_per_row>N</exec_per_row>
+<clear_rows>N</clear_rows><clear_files>N</clear_files><set_logfile>N</set_logfile><logfile/><logext/><add_date>N</add_date><add_time>N</add_time>
+<loglevel>Basic</loglevel><cluster>N</cluster><slave_server_name/><set_append_logfile>N</set_append_logfile><wait_until_finished>Y</wait_until_finished>
+<follow_abort_remote>N</follow_abort_remote><create_parent_folder>N</create_parent_folder><logging_remote_work>N</logging_remote_work>
+<run_configuration>Pentaho local</run_configuration><suppress_result_data>N</suppress_result_data>
+<parameters><pass_all_parameters>Y</pass_all_parameters></parameters>
+<parallel>N</parallel><draw>Y</draw><nr>0</nr><xloc>416</xloc><yloc>128</yloc><attributes_kjc/></entry><entry><name>02 Dimensões</name><description/><type>TRANS</type><attributes/><specification_method>filename</specification_method><trans_object_id/>
+<filename>${Internal.Entry.Current.Directory}/02_dimensoes.ktr</filename><transname/>
+<arg_from_previous>N</arg_from_previous><params_from_previous>N</params_from_previous><exec_per_row>N</exec_per_row>
+<clear_rows>N</clear_rows><clear_files>N</clear_files><set_logfile>N</set_logfile><logfile/><logext/><add_date>N</add_date><add_time>N</add_time>
+<loglevel>Basic</loglevel><cluster>N</cluster><slave_server_name/><set_append_logfile>N</set_append_logfile><wait_until_finished>Y</wait_until_finished>
+<follow_abort_remote>N</follow_abort_remote><create_parent_folder>N</create_parent_folder><logging_remote_work>N</logging_remote_work>
+<run_configuration>Pentaho local</run_configuration><suppress_result_data>N</suppress_result_data>
+<parameters><pass_all_parameters>Y</pass_all_parameters></parameters>
+<parallel>N</parallel><draw>Y</draw><nr>0</nr><xloc>576</xloc><yloc>128</yloc><attributes_kjc/></entry><entry><name>03 Fato</name><description/><type>TRANS</type><attributes/><specification_method>filename</specification_method><trans_object_id/>
+<filename>${Internal.Entry.Current.Directory}/03_fato_patrimonio_anual.ktr</filename><transname/>
+<arg_from_previous>N</arg_from_previous><params_from_previous>N</params_from_previous><exec_per_row>N</exec_per_row>
+<clear_rows>N</clear_rows><clear_files>N</clear_files><set_logfile>N</set_logfile><logfile/><logext/><add_date>N</add_date><add_time>N</add_time>
+<loglevel>Basic</loglevel><cluster>N</cluster><slave_server_name/><set_append_logfile>N</set_append_logfile><wait_until_finished>Y</wait_until_finished>
+<follow_abort_remote>N</follow_abort_remote><create_parent_folder>N</create_parent_folder><logging_remote_work>N</logging_remote_work>
+<run_configuration>Pentaho local</run_configuration><suppress_result_data>N</suppress_result_data>
+<parameters><pass_all_parameters>Y</pass_all_parameters></parameters>
+<parallel>N</parallel><draw>Y</draw><nr>0</nr><xloc>736</xloc><yloc>128</yloc><attributes_kjc/></entry><entry><name>Sucesso</name><description/><type>SUCCESS</type><attributes/>
+<parallel>N</parallel><draw>Y</draw><nr>0</nr><xloc>896</xloc><yloc>128</yloc><attributes_kjc/></entry></entries>
+<hops><hop><from>Start</from><to>Limpar tabelas (carga full)</to><from_nr>0</from_nr><to_nr>0</to_nr><enabled>Y</enabled><evaluation>Y</evaluation><unconditional>Y</unconditional></hop><hop><from>Limpar tabelas (carga full)</from><to>01 Staging</to><from_nr>0</from_nr><to_nr>0</to_nr><enabled>Y</enabled><evaluation>Y</evaluation><unconditional>N</unconditional></hop><hop><from>01 Staging</from><to>02 Dimensões</to><from_nr>0</from_nr><to_nr>0</to_nr><enabled>Y</enabled><evaluation>Y</evaluation><unconditional>N</unconditional></hop><hop><from>02 Dimensões</from><to>03 Fato</to><from_nr>0</from_nr><to_nr>0</to_nr><enabled>Y</enabled><evaluation>Y</evaluation><unconditional>N</unconditional></hop><hop><from>03 Fato</from><to>Sucesso</to><from_nr>0</from_nr><to_nr>0</to_nr><enabled>Y</enabled><evaluation>Y</evaluation><unconditional>N</unconditional></hop></hops>
+<notepads><notepad><note>Carga full e idempotente: a fonte (dados.ba.gov.br) publica o arquivo completo todo mês. Antes de rodar: python ingestion/reparar_json.py (gera data/processed/imoveis.csv).</note><xloc>64</xloc><yloc>32</yloc><width>760</width><heigth>50</heigth>
+<fontname>Segoe UI</fontname><fontsize>9</fontsize><fontbold>N</fontbold><fontitalic>N</fontitalic>
+<fontcolorred>14</fontcolorred><fontcolorgreen>58</fontcolorgreen><fontcolorblue>90</fontcolorblue>
+<backgroundcolorred>255</backgroundcolorred><backgroundcolorgreen>244</backgroundcolorgreen><backgroundcolorblue>205</backgroundcolorblue>
+<bordercolorred>100</bordercolorred><bordercolorgreen>100</bordercolorgreen><bordercolorblue>100</bordercolorblue>
+<drawshadow>Y</drawshadow></notepad></notepads>
+<attributes/></job>
